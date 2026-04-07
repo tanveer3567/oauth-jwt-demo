@@ -30,13 +30,49 @@ A three-service demo application implementing Google OAuth2 login with JWT-based
 
 ## Prerequisites
 
-- Java 17
-- Maven
-- Node.js + npm
 - A Google OAuth2 application ([Google Cloud Console](https://console.cloud.google.com/)) with:
   - Authorized redirect URI: `http://localhost:8081/login/oauth2/code/google`
 
-## Running Locally
+## Running with Docker (recommended)
+
+The easiest way to run all three services at once.
+
+**Requires:** Docker + Docker Compose
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/tanveer3567/oauth-jwt-demo.git
+cd oauth-jwt-demo
+```
+
+### 2. Set up environment variables
+
+```bash
+cp docker/.env.example docker/.env
+# Edit docker/.env and fill in your GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
+```
+
+### 3. Build and start all services
+
+```bash
+cd docker
+docker compose up --build
+```
+
+First build takes a few minutes (downloads Maven/Node dependencies). Subsequent runs are fast.
+
+### 4. Open the app
+
+Navigate to [http://localhost:4200](http://localhost:4200) and click **Login**.
+
+To stop: `docker compose down`
+
+---
+
+## Running Locally (without Docker)
+
+**Requires:** Java 17, Maven, Node.js + npm
 
 ### 1. Clone the repo
 
@@ -103,19 +139,27 @@ cd web-client && npm run build
 
 ```
 oauth-jwt-demo/
-├── spring-auth/          # Auth service — Google OAuth2 + JWT minting
+├── docker/                   # Docker setup
+│   ├── docker-compose.yml
+│   ├── .env.example
+│   ├── spring-auth/Dockerfile
+│   ├── resource-server/Dockerfile
+│   └── web-client/
+│       ├── Dockerfile
+│       └── nginx.conf
+├── spring-auth/              # Auth service — Google OAuth2 + JWT minting
 │   └── src/main/java/com/example/springauth/
-│       ├── config/       # Security config, app properties
-│       ├── controller/   # Auth endpoints
-│       └── security/     # OAuth2 success handler, request resolver
-├── resource-server/      # Protected API — JWT validation
+│       ├── config/           # Security config, app properties
+│       ├── controller/       # Auth endpoints
+│       └── security/         # OAuth2 success handler, request resolver
+├── resource-server/          # Protected API — JWT validation
 │   └── src/main/java/com/example/hellobackend/
-│       ├── config/       # Security config
-│       ├── controller/   # GET /api/hello
-│       └── security/     # JwtAuthFilter, UserPrincipal
-└── web-client/           # Angular 17 SPA
+│       ├── config/           # Security config
+│       ├── controller/       # GET /api/hello
+│       └── security/         # JwtAuthFilter, UserPrincipal
+└── web-client/               # Angular 17 SPA
     └── src/app/
-        ├── auth/         # Auth callback, guard, service
-        ├── hello/        # Hello component + service
-        └── home/         # Home/landing page
+        ├── auth/             # Auth callback, guard, service
+        ├── hello/            # Hello component + service
+        └── home/             # Home/landing page
 ```

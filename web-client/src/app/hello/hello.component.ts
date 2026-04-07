@@ -7,14 +7,36 @@ import { AuthService } from '../auth/auth.service';
   selector: 'app-hello',
   standalone: true,
   template: `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;">
-      <h1>{{ message }}</h1>
-      <button (click)="logout()" style="padding:10px 24px;font-size:16px;cursor:pointer;">Logout</button>
+    <div style="max-width:600px;margin:80px auto;padding:0 24px;font-family:sans-serif;">
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:48px;">
+        <span style="font-size:18px;font-weight:600;">MyApp</span>
+        <button (click)="logout()"
+          style="padding:8px 18px;font-size:14px;cursor:pointer;border:1px solid #ccc;background:#fff;border-radius:4px;">
+          Logout
+        </button>
+      </div>
+
+      @if (loading) {
+        <p style="color:#888;">Loading...</p>
+      } @else if (error) {
+        <p style="color:#c00;">{{ error }}</p>
+      } @else if (user) {
+        <h1 style="font-size:28px;margin:0 0 8px;">{{ user.message }}</h1>
+        <p style="color:#555;margin:0 0 40px;">{{ user.email }}</p>
+
+        <hr style="border:none;border-top:1px solid #eee;margin-bottom:40px;">
+
+        <p style="color:#888;font-size:14px;">You are successfully authenticated via Google OAuth2.</p>
+      }
+
     </div>
   `
 })
 export class HelloComponent implements OnInit {
-  message = 'Loading...';
+  user: { message: string; name: string; email: string } | null = null;
+  loading = true;
+  error = '';
 
   constructor(
     private helloService: HelloService,
@@ -24,8 +46,8 @@ export class HelloComponent implements OnInit {
 
   ngOnInit(): void {
     this.helloService.getHello().subscribe({
-      next: (res) => { this.message = res.message; },
-      error: () => { this.message = 'Error loading greeting'; }
+      next: (res) => { this.user = res; this.loading = false; },
+      error: () => { this.error = 'Failed to load user info.'; this.loading = false; }
     });
   }
 

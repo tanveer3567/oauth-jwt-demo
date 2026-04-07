@@ -14,6 +14,10 @@ public class HelloController {
 
     @GetMapping("/hello")
     public Map<String, String> hello(@AuthenticationPrincipal UserPrincipal principal) {
-        return Map.of("message", "Hello, " + principal.getName() + "!");
+        return Map.of(
+            "message", "Hello, " + principal.getName() + "!",
+            "name", principal.getName(),
+            "email", principal.getEmail()
+        );
     }
 }

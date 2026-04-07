@@ -1,0 +1,5 @@
+server:
+  port: 8082
+
+app:
+  jwt-secret: ${JWT_SECRET:my-very-secret-key-change-in-prod}

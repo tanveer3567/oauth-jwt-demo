@@ -18,15 +18,64 @@ A three-service demo application implementing Google OAuth2 login with JWT-based
 | `resource-server` | Spring Boot | 8082 | Validates JWT, exposes protected REST API |
 | `web-client` | Angular 17 | 4200 | SPA — initiates OAuth flow, stores token, calls API |
 
-## Authentication Flow
+## Sequence Diagrams
 
-1. User clicks **Login** or **Signup** → Angular navigates to `http://localhost:8081/login` (or `/signup`)
-2. `spring-auth` redirects to Google OAuth2 (`/signup` forces account selection via `prompt=select_account`)
-3. Google redirects back to `spring-auth`; a short-lived JWT (1h, HMAC-SHA256) is minted
-4. User is redirected to `http://localhost:4200/auth/callback?token=<jwt>`
-5. Angular extracts the token, saves it to `localStorage`, navigates to `/hello`
-6. `/hello` calls `http://localhost:8082/api/hello` with `Authorization: Bearer <token>`
-7. `resource-server` validates the JWT and responds with the user's name and email
+### Login
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Angular as Angular SPA<br/>(port 4200)
+    participant Auth as spring-auth<br/>(port 8081)
+    participant Google as Google OAuth2
+    participant API as resource-server<br/>(port 8082)
+
+    User->>Angular: Clicks "Log In"
+    Angular->>Auth: GET /login (browser redirect)
+    Auth->>Google: Redirect to Google OAuth2 consent screen
+    User->>Google: Selects account & grants permission
+    Google->>Auth: GET /login/oauth2/code/google?code=...
+    Auth->>Google: Exchange code for user info (email, name)
+    Google-->>Auth: User profile
+    Auth->>Auth: Mint JWT (email + name, 1h, HMAC-SHA256)
+    Auth->>Angular: Redirect to /auth/callback?token=<jwt>
+    Angular->>Angular: Save token to localStorage
+    Angular->>Angular: Navigate to /hello
+    Angular->>API: GET /api/hello (Authorization: Bearer <jwt>)
+    API->>API: Validate JWT, extract email + name
+    API-->>Angular: { message, name, email }
+    Angular->>User: Display home page
+```
+
+### Signup
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Angular as Angular SPA<br/>(port 4200)
+    participant Auth as spring-auth<br/>(port 8081)
+    participant Google as Google OAuth2
+    participant API as resource-server<br/>(port 8082)
+
+    User->>Angular: Clicks "Sign Up"
+    Angular->>Auth: GET /signup (browser redirect)
+    Auth->>Auth: CustomAuthorizationRequestResolver<br/>adds prompt=select_account
+    Auth->>Google: Redirect to Google OAuth2<br/>(forces account picker)
+    User->>Google: Picks or adds account & grants permission
+    Google->>Auth: GET /login/oauth2/code/google?code=...
+    Auth->>Google: Exchange code for user info (email, name)
+    Google-->>Auth: User profile
+    Auth->>Auth: Mint JWT (email + name, 1h, HMAC-SHA256)
+    Auth->>Angular: Redirect to /auth/callback?token=<jwt>
+    Angular->>Angular: Save token to localStorage
+    Angular->>Angular: Navigate to /hello
+    Angular->>API: GET /api/hello (Authorization: Bearer <jwt>)
+    API->>API: Validate JWT, extract email + name
+    API-->>Angular: { message, name, email }
+    Angular->>User: Display home page
+```
+
+> **Login vs Signup:** The only difference is that `/signup` forces Google to show the account picker (`prompt=select_account`), useful when a user wants to sign in with a different account than the one already in their browser session.
 
 ## Prerequisites
 

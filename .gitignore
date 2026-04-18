@@ -19,7 +19,8 @@ docker/.env
 .DS_Store
 
 # Claude Code local settings
-.claude/
+.claude/settings.local.json
+CLAUDE.local.md
 
 # Angular cache
 web-client/.angular/

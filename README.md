@@ -171,6 +171,17 @@ Navigate to [http://localhost:4200](http://localhost:4200) and click **Login**.
 | `GOOGLE_CLIENT_SECRET` | Yes | — | Google OAuth2 client secret |
 | `JWT_SECRET` | No | `my-very-secret-key-change-in-prod` | HMAC-SHA256 signing key — **change in production** |
 
+## Running Tests
+
+Tests exist for the `spring-auth` service only (unit + integration). No tests for `resource-server` or `web-client`.
+
+```bash
+cd spring-auth
+mvn test
+```
+
+Covered areas: `AppProperties`, `SecurityConfig`, `AuthController`, `CustomAuthorizationRequestResolver`, `OAuth2AuthenticationSuccessHandler`.
+
 ## Building (without running)
 
 ```bash

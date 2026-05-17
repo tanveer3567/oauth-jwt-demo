@@ -1,0 +1,220 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ──────────────────────────────────────────────────────────
+  # Step 0: Detect which modules have changes in this PR
+  # ──────────────────────────────────────────────────────────
+  detect-changes:
+    name: Detect Changed Modules
+    runs-on: ubuntu-latest
+    outputs:
+      spring-auth: ${{ steps.filter.outputs.spring-auth }}
+      resource-server: ${{ steps.filter.outputs.resource-server }}
+      web-client: ${{ steps.filter.outputs.web-client }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            spring-auth:
+              - 'spring-auth/**'
+            resource-server:
+              - 'resource-server/**'
+            web-client:
+              - 'web-client/**'
+
+  # ──────────────────────────────────────────────────────────
+  # Step 1a: Lint  (runs in parallel with security scan)
+  # ──────────────────────────────────────────────────────────
+  lint-spring-auth:
+    name: Lint — spring-auth
+    needs: detect-changes
+    if: needs.detect-changes.outputs.spring-auth == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Checkstyle
+        run: mvn checkstyle:check -f spring-auth/pom.xml --no-transfer-progress
+
+  lint-resource-server:
+    name: Lint — resource-server
+    needs: detect-changes
+    if: needs.detect-changes.outputs.resource-server == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Checkstyle
+        run: mvn checkstyle:check -f resource-server/pom.xml --no-transfer-progress
+
+  lint-web-client:
+    name: Lint — web-client
+    needs: detect-changes
+    if: needs.detect-changes.outputs.web-client == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web-client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: web-client
+
+      - name: ESLint
+        run: npm run lint
+        working-directory: web-client
+
+  # ──────────────────────────────────────────────────────────
+  # Step 1b: Security scan  (runs in parallel with lint jobs)
+  # Scans the PR diff with Gitleaks — naturally covers only
+  # files changed in this PR across all touched modules.
+  # ──────────────────────────────────────────────────────────
+  security-scan:
+    name: Security Scan — Gitleaks
+    needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.spring-auth == 'true' ||
+      needs.detect-changes.outputs.resource-server == 'true' ||
+      needs.detect-changes.outputs.web-client == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Gitleaks
+        run: |
+          GITLEAKS_VERSION=8.21.2
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
+
+      - name: Scan PR diff for secrets
+        run: |
+          gitleaks detect \
+            --source=. \
+            --log-opts="${{ github.event.pull_request.base.sha }}..${{ github.sha }}" \
+            --verbose
+
+  # ──────────────────────────────────────────────────────────
+  # Step 2: Build  (only after BOTH lint AND security pass)
+  # ──────────────────────────────────────────────────────────
+  build-spring-auth:
+    name: Build — spring-auth
+    needs: [detect-changes, lint-spring-auth, security-scan]
+    if: |
+      always() &&
+      needs.detect-changes.outputs.spring-auth == 'true' &&
+      needs.lint-spring-auth.result == 'success' &&
+      needs.security-scan.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build JAR
+        run: mvn package -DskipTests --no-transfer-progress -f spring-auth/pom.xml
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spring-auth-jar
+          path: spring-auth/target/*.jar
+          retention-days: 7
+
+  build-resource-server:
+    name: Build — resource-server
+    needs: [detect-changes, lint-resource-server, security-scan]
+    if: |
+      always() &&
+      needs.detect-changes.outputs.resource-server == 'true' &&
+      needs.lint-resource-server.result == 'success' &&
+      needs.security-scan.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build JAR
+        run: mvn package -DskipTests --no-transfer-progress -f resource-server/pom.xml
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: resource-server-jar
+          path: resource-server/target/*.jar
+          retention-days: 7
+
+  build-web-client:
+    name: Build — web-client
+    needs: [detect-changes, lint-web-client, security-scan]
+    if: |
+      always() &&
+      needs.detect-changes.outputs.web-client == 'true' &&
+      needs.lint-web-client.result == 'success' &&
+      needs.security-scan.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web-client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: web-client
+
+      - name: Build
+        run: npm run build
+        working-directory: web-client
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-client-dist
+          path: web-client/dist/
+          retention-days: 7

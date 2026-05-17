@@ -20,7 +20,7 @@ docker/.env
 
 # Claude Code local settings
 .claude/settings.local.json
-CLAUDE.local.md
+.claude/CLAUDE.local.md
 
 # Angular cache
 web-client/.angular/

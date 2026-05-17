@@ -15,7 +15,7 @@ A three-service demo application implementing Google OAuth2 login with JWT-based
 | Service | Tech | Port | Role |
 |---|---|---|---|
 | `spring-auth` | Spring Boot | 8081 | Handles Google OAuth2 login/signup, mints JWT |
-| `resource-server` | Spring Boot | 8082 | Validates JWT, exposes protected REST API |
+| `prompt-service` | Spring Boot | 8082 | Validates JWT, exposes protected REST API |
 | `web-client` | Angular 17 | 4200 | SPA — initiates OAuth flow, stores token, calls API |
 
 ## Sequence Diagrams
@@ -28,7 +28,7 @@ sequenceDiagram
     participant Angular as Angular SPA<br/>(port 4200)
     participant Auth as spring-auth<br/>(port 8081)
     participant Google as Google OAuth2
-    participant API as resource-server<br/>(port 8082)
+    participant API as prompt-service<br/>(port 8082)
 
     User->>Angular: Clicks "Log In"
     Angular->>Auth: GET /login (browser redirect)
@@ -55,7 +55,7 @@ sequenceDiagram
     participant Angular as Angular SPA<br/>(port 4200)
     participant Auth as spring-auth<br/>(port 8081)
     participant Google as Google OAuth2
-    participant API as resource-server<br/>(port 8082)
+    participant API as prompt-service<br/>(port 8082)
 
     User->>Angular: Clicks "Sign Up"
     Angular->>Auth: GET /signup (browser redirect)
@@ -139,10 +139,10 @@ GOOGLE_CLIENT_SECRET=<your-client-secret> \
 mvn spring-boot:run
 ```
 
-### 3. Start the resource server (port 8082)
+### 3. Start the prompt service (port 8082)
 
 ```bash
-cd resource-server
+cd prompt-service
 mvn spring-boot:run
 ```
 
@@ -173,7 +173,7 @@ Navigate to [http://localhost:4200](http://localhost:4200) and click **Login**.
 
 ## Running Tests
 
-Tests exist for the `spring-auth` service only (unit + integration). No tests for `resource-server` or `web-client`.
+Tests exist for the `spring-auth` service only (unit + integration). No tests for `prompt-service` or `web-client`.
 
 ```bash
 cd spring-auth
@@ -189,7 +189,7 @@ Covered areas: `AppProperties`, `SecurityConfig`, `AuthController`, `CustomAutho
 mvn package -f spring-auth/pom.xml
 
 # Resource server
-mvn package -f resource-server/pom.xml
+mvn package -f prompt-service/pom.xml
 
 # Frontend
 cd web-client && npm run build
@@ -203,7 +203,7 @@ oauth-jwt-demo/
 │   ├── docker-compose.yml
 │   ├── .env.example
 │   ├── spring-auth/Dockerfile
-│   ├── resource-server/Dockerfile
+│   ├── prompt-service/Dockerfile
 │   └── web-client/
 │       ├── Dockerfile
 │       └── nginx.conf
@@ -212,7 +212,7 @@ oauth-jwt-demo/
 │       ├── config/           # Security config, app properties
 │       ├── controller/       # Auth endpoints
 │       └── security/         # OAuth2 success handler, request resolver
-├── resource-server/          # Protected API — JWT validation
+├── prompt-service/          # Protected API — JWT validation
 │   └── src/main/java/com/example/hellobackend/
 │       ├── config/           # Security config
 │       ├── controller/       # GET /api/hello

@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       spring-auth: ${{ steps.filter.outputs.spring-auth }}
-      resource-server: ${{ steps.filter.outputs.resource-server }}
+      prompt-service: ${{ steps.filter.outputs.prompt-service }}
       web-client: ${{ steps.filter.outputs.web-client }}
     steps:
       - uses: actions/checkout@v4
@@ -24,8 +24,8 @@ jobs:
           filters: |
             spring-auth:
               - 'spring-auth/**'
-            resource-server:
-              - 'resource-server/**'
+            prompt-service:
+              - 'prompt-service/**'
             web-client:
               - 'web-client/**'
 
@@ -50,10 +50,10 @@ jobs:
       - name: Checkstyle
         run: mvn checkstyle:check -f spring-auth/pom.xml --no-transfer-progress
 
-  lint-resource-server:
-    name: Lint — resource-server
+  lint-prompt-service:
+    name: Lint — prompt-service
     needs: detect-changes
-    if: needs.detect-changes.outputs.resource-server == 'true'
+    if: needs.detect-changes.outputs.prompt-service == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,7 +66,7 @@ jobs:
           cache: 'maven'
 
       - name: Checkstyle
-        run: mvn checkstyle:check -f resource-server/pom.xml --no-transfer-progress
+        run: mvn checkstyle:check -f prompt-service/pom.xml --no-transfer-progress
 
   lint-web-client:
     name: Lint — web-client
@@ -101,7 +101,7 @@ jobs:
     needs: detect-changes
     if: |
       needs.detect-changes.outputs.spring-auth == 'true' ||
-      needs.detect-changes.outputs.resource-server == 'true' ||
+      needs.detect-changes.outputs.prompt-service == 'true' ||
       needs.detect-changes.outputs.web-client == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -156,13 +156,13 @@ jobs:
           path: spring-auth/target/*.jar
           retention-days: 7
 
-  build-resource-server:
-    name: Build — resource-server
-    needs: [detect-changes, lint-resource-server, security-scan]
+  build-prompt-service:
+    name: Build — prompt-service
+    needs: [detect-changes, lint-prompt-service, security-scan]
     if: |
       always() &&
-      needs.detect-changes.outputs.resource-server == 'true' &&
-      needs.lint-resource-server.result == 'success' &&
+      needs.detect-changes.outputs.prompt-service == 'true' &&
+      needs.lint-prompt-service.result == 'success' &&
       needs.security-scan.result == 'success'
     runs-on: ubuntu-latest
     steps:
@@ -176,13 +176,13 @@ jobs:
           cache: 'maven'
 
       - name: Build JAR
-        run: mvn package -DskipTests --no-transfer-progress -f resource-server/pom.xml
+        run: mvn package -DskipTests --no-transfer-progress -f prompt-service/pom.xml
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: resource-server-jar
-          path: resource-server/target/*.jar
+          name: prompt-service-jar
+          path: prompt-service/target/*.jar
           retention-days: 7
 
   build-web-client:

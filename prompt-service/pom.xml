@@ -10,10 +10,10 @@
         <relativePath/>
     </parent>
     <groupId>com.example</groupId>
-    <artifactId>resource-server</artifactId>
+    <artifactId>prompt-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>resource-server</name>
-    <description>Spring Boot OAuth2 Resource Server</description>
+    <name>prompt-service</name>
+    <description>Spring Boot OAuth2 Prompt Service</description>
     <properties>
         <java.version>17</java.version>
     </properties>

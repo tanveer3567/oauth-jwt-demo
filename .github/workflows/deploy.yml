@@ -5,6 +5,17 @@ name: Deploy to Amazon ECS
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      module:
+        description: 'Module to deploy'
+        required: true
+        type: choice
+        options:
+          - prompt-service
+          - spring-auth
+          - web-client
+          - all
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Required GitHub configuration (set in repo Settings → Secrets and variables)
@@ -127,7 +138,9 @@ jobs:
   deploy-prompt-service:
     name: Deploy — prompt-service
     needs: detect-changes
-    if: needs.detect-changes.outputs.prompt-service == 'true'
+    if: |
+      (github.event_name == 'push' && needs.detect-changes.outputs.prompt-service == 'true') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.module == 'prompt-service' || inputs.module == 'all'))
     runs-on: ubuntu-latest
     permissions:
       id-token: write

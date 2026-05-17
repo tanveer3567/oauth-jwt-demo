@@ -25,7 +25,8 @@ on:
 #                           e.g. arn:aws:iam::123456789012:role/github-actions-deploy
 #
 # Variables (non-sensitive, use vars.*):
-#   AWS_REGION              e.g. us-east-2  (defaults to us-east-2 if not set)
+#   AWS_REGION              e.g. us-east-1
+#   AWS_ACCOUNT_ID          12-digit AWS account ID
 #   ECS_CLUSTER             ECS cluster name
 #
 #   SPRING_AUTH_ECR_REPO         ECR repository name  (e.g. spring-auth)
@@ -74,7 +75,7 @@ jobs:
 
   # ──────────────────────────────────────────────────────────
   # spring-auth — build, push, deploy
-  # TODO: replace `if: false` with the line below once AWS is configured
+  # TODO: set if: to the line below once AWS is configured
   #   if: needs.detect-changes.outputs.spring-auth == 'true'
   # ──────────────────────────────────────────────────────────
   deploy-spring-auth:
@@ -142,6 +143,7 @@ jobs:
       (github.event_name == 'push' && needs.detect-changes.outputs.prompt-service == 'true') ||
       (github.event_name == 'workflow_dispatch' && (inputs.module == 'prompt-service' || inputs.module == 'all'))
     runs-on: ubuntu-latest
+    environment: dev
     permissions:
       id-token: write
       contents: read
@@ -194,7 +196,7 @@ jobs:
 
   # ──────────────────────────────────────────────────────────
   # web-client — build, push, deploy
-  # TODO: replace `if: false` with the line below once AWS is configured
+  # TODO: set if: to the line below once AWS is configured
   #   if: needs.detect-changes.outputs.web-client == 'true'
   # ──────────────────────────────────────────────────────────
   deploy-web-client:

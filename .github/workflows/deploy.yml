@@ -153,8 +153,12 @@ jobs:
         run: |
           OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" | jq -r '.value')
-          PAYLOAD=$(echo $OIDC_TOKEN | cut -d. -f2 | base64 -d 2>/dev/null || echo $OIDC_TOKEN | cut -d. -f2 | base64 -di)
-          echo $PAYLOAD | jq .
+          echo $OIDC_TOKEN | cut -d. -f2 | python3 -c "
+          import sys, base64, json
+          payload = sys.stdin.read().strip()
+          decoded = base64.urlsafe_b64decode(payload + '=' * (4 - len(payload) % 4) % 4)
+          print(json.dumps(json.loads(decoded), indent=2))
+          "
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4

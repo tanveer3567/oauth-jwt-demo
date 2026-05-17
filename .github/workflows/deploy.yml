@@ -156,7 +156,7 @@ jobs:
           echo $OIDC_TOKEN | cut -d. -f2 | python3 -c "
           import sys, base64, json
           payload = sys.stdin.read().strip()
-          decoded = base64.urlsafe_b64decode(payload + '=' * (4 - len(payload) % 4) % 4)
+          decoded = base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4))
           print(json.dumps(json.loads(decoded), indent=2))
           "
 

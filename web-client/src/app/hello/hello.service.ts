@@ -13,6 +13,6 @@ export class HelloService {
   getHello(): Observable<{ message: string; name: string; email: string }> {
     const token = this.authService.getToken();
     const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
-    return this.http.get<{ message: string }>(`${environment.apiUrl}/api/hello`, { headers });
+    return this.http.get<{ message: string; name: string; email: string }>(`${environment.apiUrl}/api/hello`, { headers });
   }
 }

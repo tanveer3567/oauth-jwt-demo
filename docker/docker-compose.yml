@@ -2,8 +2,7 @@ services:
 
   spring-auth:
     build:
-      context: ..
-      dockerfile: docker/spring-auth/Dockerfile
+      context: ../spring-auth
     ports:
       - "8081:8081"
     environment:
@@ -13,8 +12,7 @@ services:
 
   prompt-service:
     build:
-      context: ..
-      dockerfile: docker/prompt-service/Dockerfile
+      context: ../prompt-service
     ports:
       - "8082:8082"
     environment:
@@ -22,8 +20,7 @@ services:
 
   web-client:
     build:
-      context: ..
-      dockerfile: docker/web-client/Dockerfile
+      context: ../web-client
     ports:
       - "4200:4200"
     depends_on:

@@ -1,0 +1,237 @@
+name: Deploy to Amazon ECS
+
+# Triggers on every push to main (i.e., after a PR merges).
+# Only the modules that changed are built, pushed to ECR, and deployed.
+on:
+  push:
+    branches: [main]
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Required GitHub configuration (set in repo Settings → Secrets and variables)
+#
+# Secrets:
+#   AWS_ROLE_ARN            ARN of the IAM role to assume via OIDC
+#                           e.g. arn:aws:iam::123456789012:role/github-actions-deploy
+#
+# Variables (non-sensitive, use vars.*):
+#   AWS_REGION              e.g. us-east-1
+#   AWS_ACCOUNT_ID          12-digit AWS account ID
+#   ECS_CLUSTER             ECS cluster name
+#
+#   SPRING_AUTH_ECR_REPO         ECR repository name  (e.g. spring-auth)
+#   SPRING_AUTH_ECS_SERVICE      ECS service name
+#   SPRING_AUTH_TASK_FAMILY      Task definition family name
+#   SPRING_AUTH_CONTAINER_NAME   Container name inside the task definition
+#
+#   PROMPT_SERVICE_ECR_REPO
+#   PROMPT_SERVICE_ECS_SERVICE
+#   PROMPT_SERVICE_TASK_FAMILY
+#   PROMPT_SERVICE_CONTAINER_NAME
+#
+#   WEB_CLIENT_ECR_REPO
+#   WEB_CLIENT_ECS_SERVICE
+#   WEB_CLIENT_TASK_FAMILY
+#   WEB_CLIENT_CONTAINER_NAME
+# ──────────────────────────────────────────────────────────────────────────────
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+
+jobs:
+  # ──────────────────────────────────────────────────────────
+  # Detect which modules changed in the merged commit
+  # ──────────────────────────────────────────────────────────
+  detect-changes:
+    name: Detect Changed Modules
+    runs-on: ubuntu-latest
+    outputs:
+      spring-auth: ${{ steps.filter.outputs.spring-auth }}
+      prompt-service: ${{ steps.filter.outputs.prompt-service }}
+      web-client: ${{ steps.filter.outputs.web-client }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            spring-auth:
+              - 'spring-auth/**'
+            prompt-service:
+              - 'prompt-service/**'
+            web-client:
+              - 'web-client/**'
+
+  # ──────────────────────────────────────────────────────────
+  # spring-auth — build, push, deploy
+  # ──────────────────────────────────────────────────────────
+  deploy-spring-auth:
+    name: Deploy — spring-auth
+    needs: detect-changes
+    if: needs.detect-changes.outputs.spring-auth == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image to ECR
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          REPO: ${{ vars.SPRING_AUTH_ECR_REPO }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $REGISTRY/$REPO:$IMAGE_TAG ./spring-auth
+          docker push $REGISTRY/$REPO:$IMAGE_TAG
+
+      - name: Download current ECS task definition
+        env:
+          TASK_FAMILY: ${{ vars.SPRING_AUTH_TASK_FAMILY }}
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition $TASK_FAMILY \
+            --query taskDefinition \
+            > task-definition.json
+
+      - name: Render new task definition with updated image
+        id: render-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ vars.SPRING_AUTH_CONTAINER_NAME }}
+          image: ${{ steps.ecr-login.outputs.registry }}/${{ vars.SPRING_AUTH_ECR_REPO }}:${{ github.sha }}
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+          service: ${{ vars.SPRING_AUTH_ECS_SERVICE }}
+          cluster: ${{ vars.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+  # ──────────────────────────────────────────────────────────
+  # prompt-service — build, push, deploy
+  # ──────────────────────────────────────────────────────────
+  deploy-prompt-service:
+    name: Deploy — prompt-service
+    needs: detect-changes
+    if: needs.detect-changes.outputs.prompt-service == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image to ECR
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          REPO: ${{ vars.PROMPT_SERVICE_ECR_REPO }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $REGISTRY/$REPO:$IMAGE_TAG ./prompt-service
+          docker push $REGISTRY/$REPO:$IMAGE_TAG
+
+      - name: Download current ECS task definition
+        env:
+          TASK_FAMILY: ${{ vars.PROMPT_SERVICE_TASK_FAMILY }}
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition $TASK_FAMILY \
+            --query taskDefinition \
+            > task-definition.json
+
+      - name: Render new task definition with updated image
+        id: render-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ vars.PROMPT_SERVICE_CONTAINER_NAME }}
+          image: ${{ steps.ecr-login.outputs.registry }}/${{ vars.PROMPT_SERVICE_ECR_REPO }}:${{ github.sha }}
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+          service: ${{ vars.PROMPT_SERVICE_ECS_SERVICE }}
+          cluster: ${{ vars.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+  # ──────────────────────────────────────────────────────────
+  # web-client — build, push, deploy
+  # ──────────────────────────────────────────────────────────
+  deploy-web-client:
+    name: Deploy — web-client
+    needs: detect-changes
+    if: needs.detect-changes.outputs.web-client == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image to ECR
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          REPO: ${{ vars.WEB_CLIENT_ECR_REPO }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $REGISTRY/$REPO:$IMAGE_TAG ./web-client
+          docker push $REGISTRY/$REPO:$IMAGE_TAG
+
+      - name: Download current ECS task definition
+        env:
+          TASK_FAMILY: ${{ vars.WEB_CLIENT_TASK_FAMILY }}
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition $TASK_FAMILY \
+            --query taskDefinition \
+            > task-definition.json
+
+      - name: Render new task definition with updated image
+        id: render-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ vars.WEB_CLIENT_CONTAINER_NAME }}
+          image: ${{ steps.ecr-login.outputs.registry }}/${{ vars.WEB_CLIENT_ECR_REPO }}:${{ github.sha }}
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+          service: ${{ vars.WEB_CLIENT_ECS_SERVICE }}
+          cluster: ${{ vars.ECS_CLUSTER }}
+          wait-for-service-stability: true

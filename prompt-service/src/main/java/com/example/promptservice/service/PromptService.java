@@ -1,7 +1,7 @@
-package com.example.hellobackend.service;
+package com.example.promptservice.service;
 
-import com.example.hellobackend.model.Category;
-import com.example.hellobackend.model.Prompt;
+import com.example.promptservice.model.Category;
+import com.example.promptservice.model.Prompt;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

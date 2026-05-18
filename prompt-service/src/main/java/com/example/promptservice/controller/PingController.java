@@ -1,6 +1,6 @@
-package com.example.hellobackend.controller;
+package com.example.promptservice.controller;
 
-import com.example.hellobackend.config.AppProperties;
+import com.example.promptservice.config.AppProperties;
 import org.springframework.boot.actuate.health.HealthEndpoint;
 import org.springframework.boot.actuate.health.Status;
 import org.springframework.http.HttpStatus;

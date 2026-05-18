@@ -1,4 +1,4 @@
-package com.example.hellobackend.model;
+package com.example.promptservice.model;
 
 public enum Category {
     PRODUCTIVITY,

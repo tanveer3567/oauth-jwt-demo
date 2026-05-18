@@ -1,6 +1,6 @@
-package com.example.hellobackend.config;
+package com.example.promptservice.config;
 
-import com.example.hellobackend.security.JwtAuthFilter;
+import com.example.promptservice.security.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;

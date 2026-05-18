@@ -1,8 +1,8 @@
-package com.example.hellobackend.controller;
+package com.example.promptservice.controller;
 
-import com.example.hellobackend.model.Prompt;
-import com.example.hellobackend.security.UserPrincipal;
-import com.example.hellobackend.service.PromptService;
+import com.example.promptservice.model.Prompt;
+import com.example.promptservice.security.UserPrincipal;
+import com.example.promptservice.service.PromptService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

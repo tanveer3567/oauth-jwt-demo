@@ -1,4 +1,4 @@
-package com.example.hellobackend.security;
+package com.example.promptservice.security;
 
 public class UserPrincipal {
     private final String email;

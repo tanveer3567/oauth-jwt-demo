@@ -19,9 +19,9 @@ jobs:
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: write
+      pull-requests: write
+      issues: write
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
     steps:
@@ -47,4 +47,34 @@ jobs:
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
           # claude_args: '--allowed-tools Bash(gh pr *)'
+
+      - name: Create Pull Request
+        # Only create a PR when Claude was triggered from a plain issue, not from a PR comment/review
+        if: |
+          success() &&
+          github.event_name != 'pull_request_review_comment' &&
+          github.event_name != 'pull_request_review'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          # Find the branch Claude pushed for this issue
+          BRANCH=$(git ls-remote --heads origin \
+            "claude/issue-${ISSUE_NUMBER}" \
+            "claude/issue-${ISSUE_NUMBER}-*" 2>/dev/null \
+            | awk '{print $2}' | sed 's|refs/heads/||' | head -1)
+
+          if [ -z "$BRANCH" ]; then
+            echo "No Claude branch found for issue #${ISSUE_NUMBER}, skipping PR creation."
+            exit 0
+          fi
+
+          echo "Creating PR from branch: $BRANCH"
+          gh pr create \
+            --title "${ISSUE_TITLE}" \
+            --body "Closes #${ISSUE_NUMBER}" \
+            --head "$BRANCH" \
+            --base main \
+            || echo "PR already exists or creation skipped."
 

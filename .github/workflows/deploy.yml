@@ -74,8 +74,10 @@ jobs:
 
   # ──────────────────────────────────────────────────────────
   # spring-auth — build, push, deploy
-  # TODO: replace `if: false` with the line below once AWS is configured
-  #   if: needs.detect-changes.outputs.spring-auth == 'true'
+  # TODO: uncomment the if condition below once AWS is configured
+  #   if: |
+  #     (github.event_name == 'push' && needs.detect-changes.outputs.spring-auth == 'true') ||
+  #     (github.event_name == 'workflow_dispatch' && (inputs.module == 'spring-auth' || inputs.module == 'all'))
   # ──────────────────────────────────────────────────────────
   deploy-spring-auth:
     name: Deploy — spring-auth
@@ -146,6 +148,8 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    outputs:
+      public_ip: ${{ steps.get-ip.outputs.public_ip }}
     steps:
       - uses: actions/checkout@v4
 
@@ -204,29 +208,32 @@ jobs:
           cluster: ${{ vars.ECS_CLUSTER }}
           wait-for-service-stability: true
 
-      - name: Output prompt-service URL
-        if: success()
+      - name: Get prompt-service public IP
+        id: get-ip
         run: |
-          # Get the running task ARN
           TASK_ARN=$(aws ecs list-tasks \
             --cluster "${{ vars.ECS_CLUSTER }}" \
             --service-name "${{ vars.PROMPT_SERVICE_ECS_SERVICE }}" \
             --desired-status RUNNING \
             --query "taskArns[0]" --output text)
 
-          # Get the ENI attached to the task
           ENI_ID=$(aws ecs describe-tasks \
             --cluster "${{ vars.ECS_CLUSTER }}" \
             --tasks "$TASK_ARN" \
             --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" \
             --output text)
 
-          # Get the public IP from the ENI
           PUBLIC_IP=$(aws ec2 describe-network-interfaces \
             --network-interface-ids "$ENI_ID" \
             --query "NetworkInterfaces[0].Association.PublicIp" \
             --output text)
 
+          echo "public_ip=${PUBLIC_IP}" >> "$GITHUB_OUTPUT"
+
+      - name: Output prompt-service URL
+        if: success()
+        run: |
+          PUBLIC_IP="${{ steps.get-ip.outputs.public_ip }}"
           echo "## prompt-service is live" >> "$GITHUB_STEP_SUMMARY"
           echo "| | URL |" >> "$GITHUB_STEP_SUMMARY"
           echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
@@ -237,8 +244,10 @@ jobs:
 
   # ──────────────────────────────────────────────────────────
   # web-client — build, push, deploy
-  # TODO: replace `if: false` with the line below once AWS is configured
-  #   if: needs.detect-changes.outputs.web-client == 'true'
+  # TODO: uncomment the if condition below once AWS is configured
+  #   if: |
+  #     (github.event_name == 'push' && needs.detect-changes.outputs.web-client == 'true') ||
+  #     (github.event_name == 'workflow_dispatch' && (inputs.module == 'web-client' || inputs.module == 'all'))
   # ──────────────────────────────────────────────────────────
   deploy-web-client:
     name: Deploy — web-client
@@ -294,3 +303,18 @@ jobs:
           service: ${{ vars.WEB_CLIENT_ECS_SERVICE }}
           cluster: ${{ vars.ECS_CLUSTER }}
           wait-for-service-stability: true
+
+  # ──────────────────────────────────────────────────────────
+  # Health check — prompt-service ping
+  # ──────────────────────────────────────────────────────────
+  health-check-prompt-service:
+    name: Health Check — prompt-service
+    needs: deploy-prompt-service
+    if: needs.deploy-prompt-service.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping
+        run: |
+          URL="http://${{ needs.deploy-prompt-service.outputs.public_ip }}:8082/api/ping"
+          echo "Calling ${URL}"
+          curl --fail --retry 5 --retry-delay 5 --retry-connrefused "${URL}"

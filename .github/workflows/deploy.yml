@@ -238,7 +238,7 @@ jobs:
           echo "| | URL |" >> "$GITHUB_STEP_SUMMARY"
           echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
           echo "| API | http://${PUBLIC_IP}:8082/api/hello |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Ping | http://${PUBLIC_IP}:8082/api/ping |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Ping | http://${PUBLIC_IP}:8082/ping |" >> "$GITHUB_STEP_SUMMARY"
           echo ""
           echo "prompt-service public IP: ${PUBLIC_IP}"
 
@@ -315,6 +315,6 @@ jobs:
     steps:
       - name: Ping
         run: |
-          URL="http://${{ needs.deploy-prompt-service.outputs.public_ip }}:8082/api/ping"
+          URL="http://${{ needs.deploy-prompt-service.outputs.public_ip }}:8082/ping"
           echo "Calling ${URL}"
           curl --fail --retry 5 --retry-delay 5 --retry-connrefused "${URL}"

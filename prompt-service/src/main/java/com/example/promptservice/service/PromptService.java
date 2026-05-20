@@ -5,6 +5,7 @@ import com.example.promptservice.model.Prompt;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PromptService {
@@ -20,5 +21,11 @@ public class PromptService {
 
     public List<Prompt> findAll() {
         return MOCK_PROMPTS;
+    }
+
+    public Optional<Prompt> findById(String id) {
+        return MOCK_PROMPTS.stream()
+            .filter(p -> p.id().equals(id))
+            .findFirst();
     }
 }

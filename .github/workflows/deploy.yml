@@ -204,6 +204,37 @@ jobs:
           cluster: ${{ vars.ECS_CLUSTER }}
           wait-for-service-stability: true
 
+      - name: Output prompt-service URL
+        if: success()
+        run: |
+          # Get the running task ARN
+          TASK_ARN=$(aws ecs list-tasks \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --service-name "${{ vars.PROMPT_SERVICE_ECS_SERVICE }}" \
+            --desired-status RUNNING \
+            --query "taskArns[0]" --output text)
+
+          # Get the ENI attached to the task
+          ENI_ID=$(aws ecs describe-tasks \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --tasks "$TASK_ARN" \
+            --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" \
+            --output text)
+
+          # Get the public IP from the ENI
+          PUBLIC_IP=$(aws ec2 describe-network-interfaces \
+            --network-interface-ids "$ENI_ID" \
+            --query "NetworkInterfaces[0].Association.PublicIp" \
+            --output text)
+
+          echo "## prompt-service is live" >> "$GITHUB_STEP_SUMMARY"
+          echo "| | URL |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| API | http://${PUBLIC_IP}:8082/api/hello |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Ping | http://${PUBLIC_IP}:8082/api/ping |" >> "$GITHUB_STEP_SUMMARY"
+          echo ""
+          echo "prompt-service public IP: ${PUBLIC_IP}"
+
   # ──────────────────────────────────────────────────────────
   # web-client — build, push, deploy
   # TODO: replace `if: false` with the line below once AWS is configured

@@ -14,6 +14,34 @@ jobs:
     if: github.event.assignee.login == 'claude'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - uses: anthropics/claude-code-action@beta
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+      - name: Create Pull Request
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          # Find the branch Claude pushed for this issue
+          BRANCH=$(git ls-remote --heads origin \
+            "claude/issue-${ISSUE_NUMBER}" \
+            "claude/issue-${ISSUE_NUMBER}-*" 2>/dev/null \
+            | awk '{print $2}' | sed 's|refs/heads/||' | head -1)
+
+          if [ -z "$BRANCH" ]; then
+            echo "No Claude branch found for issue #${ISSUE_NUMBER}, skipping PR creation."
+            exit 0
+          fi
+
+          echo "Creating PR from branch: $BRANCH"
+          gh pr create \
+            --title "${ISSUE_TITLE}" \
+            --body "Closes #${ISSUE_NUMBER}" \
+            --head "$BRANCH" \
+            --base main \
+            || echo "PR already exists or creation skipped."

@@ -4,15 +4,22 @@ import { Observable } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { environment } from '../../environments/environment';
 
+export interface Prompt {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class HelloService {
   constructor(private http: HttpClient, private authService: AuthService) {}
 
-  getHello(): Observable<{ message: string; name: string; email: string }> {
+  getPrompts(): Observable<Prompt[]> {
     const token = this.authService.getToken();
     const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
-    return this.http.get<{ message: string; name: string; email: string }>(`${environment.apiUrl}/api/hello`, { headers });
+    return this.http.get<Prompt[]>(`${environment.apiUrl}/api/v1/prompts`, { headers });
   }
 }

@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { HelloService } from './hello.service';
+import { HelloService, Prompt } from './hello.service';
 import { AuthService } from '../auth/auth.service';
 
 @Component({
@@ -21,20 +21,25 @@ import { AuthService } from '../auth/auth.service';
         <p style="color:#888;">Loading...</p>
       } @else if (error) {
         <p style="color:#c00;">{{ error }}</p>
-      } @else if (user) {
-        <h1 style="font-size:28px;margin:0 0 8px;">{{ user.message }}</h1>
-        <p style="color:#555;margin:0 0 40px;">{{ user.email }}</p>
+      } @else {
+        <h1 style="font-size:28px;margin:0 0 8px;">Prompts</h1>
 
-        <hr style="border:none;border-top:1px solid #eee;margin-bottom:40px;">
+        <hr style="border:none;border-top:1px solid #eee;margin-bottom:24px;">
 
-        <p style="color:#888;font-size:14px;">You are successfully authenticated via Google OAuth2.</p>
+        @for (prompt of prompts; track prompt.id) {
+          <div style="margin-bottom:16px;padding:16px;border:1px solid #eee;border-radius:6px;">
+            <strong>{{ prompt.title }}</strong>
+            <span style="margin-left:8px;font-size:12px;color:#888;background:#f5f5f5;padding:2px 6px;border-radius:4px;">{{ prompt.category }}</span>
+            <p style="margin:6px 0 0;color:#555;font-size:14px;">{{ prompt.description }}</p>
+          </div>
+        }
       }
 
     </div>
   `
 })
 export class HelloComponent implements OnInit {
-  user: { message: string; name: string; email: string } | null = null;
+  prompts: Prompt[] = [];
   loading = true;
   error = '';
 
@@ -45,9 +50,9 @@ export class HelloComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.helloService.getHello().subscribe({
-      next: (res) => { this.user = res; this.loading = false; },
-      error: () => { this.error = 'Failed to load user info.'; this.loading = false; }
+    this.helloService.getPrompts().subscribe({
+      next: (res) => { this.prompts = res; this.loading = false; },
+      error: () => { this.error = 'Failed to load prompts.'; this.loading = false; }
     });
   }
 
